@@ -10,7 +10,7 @@ deegree Webservices
    :numbered:
    :maxdepth: 2
 
-   intro
+   introduction/index
    installation
    lightly
    basics
