@@ -14,7 +14,7 @@ deegree Webservices
    example/index
    installation
    basics
-   webservices
+   services/index
    featurestores
    tilestores
    coveragestores
