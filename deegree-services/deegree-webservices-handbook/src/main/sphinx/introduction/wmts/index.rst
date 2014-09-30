@@ -1,4 +1,4 @@
-.. _anchor-configuration-index:
+.. _anchor-configuration-wmts:
 
 -------------------------------
 Characteristics of deegree WMTS

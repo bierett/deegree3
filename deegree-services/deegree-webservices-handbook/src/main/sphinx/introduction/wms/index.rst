@@ -1,4 +1,4 @@
-.. _anchor-configuration-index:
+.. _anchor-configuration-wms:
 
 ------------------------------
 Characteristics of deegree WMS

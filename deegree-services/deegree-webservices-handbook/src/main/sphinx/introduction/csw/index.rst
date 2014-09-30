@@ -1,4 +1,4 @@
-.. _anchor-configuration-index:
+.. _anchor-configuration-csw:
 
 ------------------------------
 Characteristics of deegree CSW

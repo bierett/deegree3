@@ -1,4 +1,4 @@
-.. _anchor-configuration-index:
+.. _anchor-configuration-wfs:
 
 ------------------------------
 Characteristics of deegree WFS
