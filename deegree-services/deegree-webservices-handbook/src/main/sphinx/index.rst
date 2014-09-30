@@ -11,8 +11,8 @@ deegree Webservices
    :maxdepth: 2
 
    introduction/index
+   example/index
    installation
-   lightly
    basics
    webservices
    featurestores
