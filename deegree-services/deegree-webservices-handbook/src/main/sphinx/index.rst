@@ -15,7 +15,7 @@ deegree Webservices
    installation
    basics
    services/index
-   featurestores
+   featurestore/index
    tilestores
    coveragestores
    metadatastores
