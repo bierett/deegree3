@@ -13,7 +13,7 @@ deegree Webservices
    introduction/index
    example/index
    installation
-   basics
+   basics/index.rst
    services/index
    featurestore/index
    tilestores
