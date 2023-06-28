@@ -1,4 +1,3 @@
-//$HeadURL: svn+ssh://aschmitz@wald.intevation.org/deegree/base/trunk/resources/eclipse/files_template.xml $
 /*----------------------------------------------------------------------------
  This file is part of deegree, http://deegree.org/
  Copyright (C) 2001-2011 by:
@@ -37,18 +36,16 @@ package org.deegree.tools.migration;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.InputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.net.URISyntaxException;
 import java.nio.charset.Charset;
 import java.util.List;
 
 import javax.xml.stream.XMLStreamException;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerConfigurationException;
 import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.stream.StreamResult;
-import javax.xml.transform.stream.StreamSource;
 
+import org.deegree.commons.xml.XsltUtils;
 import org.deegree.services.OWS;
 import org.deegree.services.OwsManager;
 import org.deegree.services.wms.controller.WMSController;
@@ -60,41 +57,32 @@ import org.deegree.workspace.Workspace;
 import org.deegree.workspace.WorkspaceUtils;
 
 /**
- * 
  * @author <a href="mailto:schmitz@lat-lon.de">Andreas Schmitz</a>
- * @author last edited by: $Author: stranger $
- * 
- * @version $Revision: $, $Date: $
  */
 public class ThemeExtractor {
 
-    private final Workspace workspace;
+	private ThemeExtractor() {
+	}
 
-    private Transformer transformer;
+	public static void transform(Workspace workspace)
+			throws TransformerException, XMLStreamException, URISyntaxException, IOException {
+		OwsManager mgr = workspace.getResourceManager(OwsManager.class);
+		List<OWS> wmss = mgr.getByOWSClass(WMSController.class);
+		for (OWS ows : wmss) {
+			ResourceMetadata<? extends Resource> md = ows.getMetadata();
+			ResourceIdentifier<? extends Resource> id = md.getIdentifier();
+			File loc = md.getLocation().resolveToFile(id.getId() + ".xml");
+			ByteArrayOutputStream bos = new ByteArrayOutputStream();
 
-    public ThemeExtractor( Workspace workspace ) throws TransformerConfigurationException {
-        this.workspace = workspace;
-        TransformerFactory fac = TransformerFactory.newInstance();
-        InputStream xsl = ThemeExtractor.class.getResourceAsStream( "extracttheme.xsl" );
-        this.transformer = fac.newTransformer( new StreamSource( xsl ) );
-    }
+			FileInputStream doc = new FileInputStream(loc);
+			XsltUtils.transform(doc, ThemeExtractor.class.getResource("extracttheme.xsl"), bos);
+			doc.close();
 
-    public void transform()
-                            throws TransformerException, XMLStreamException {
-        OwsManager mgr = workspace.getResourceManager( OwsManager.class );
-        List<OWS> wmss = mgr.getByOWSClass( WMSController.class );
-        for ( OWS ows : wmss ) {
-            ResourceMetadata<? extends Resource> md = ows.getMetadata();
-            ResourceIdentifier<? extends Resource> id = md.getIdentifier();
-            File loc = md.getLocation().resolveToFile( id.getId() + ".xml" );
-            ByteArrayOutputStream bos = new ByteArrayOutputStream();
-            transformer.transform( new StreamSource( loc ), new StreamResult( bos ) );
+			ThemeXmlStreamEncoder.writeOut(bos);
 
-            ThemeXmlStreamEncoder.writeOut( bos );
-
-            WorkspaceUtils.activateSynthetic( workspace, ThemeProvider.class, id.getId(),
-                                              new String( bos.toByteArray(), Charset.forName( "UTF-8" ) ) );
-        }
-    }
+			WorkspaceUtils.activateSynthetic(workspace, ThemeProvider.class, id.getId(),
+					new String(bos.toByteArray(), Charset.forName("UTF-8")));
+		}
+	}
 
 }

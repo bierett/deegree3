@@ -1,4 +1,3 @@
-//$HeadURL$
 /*----------------------------------------------------------------------------
  This file is part of deegree, http://deegree.org/
  Copyright (C) 2001-2009 by:
@@ -44,195 +43,205 @@ import org.deegree.commons.utils.kvp.MissingParameterException;
 
 /**
  * OGC Web Service Exception for all OGC service related errors.
- * 
+ *
  * @author <a href="mailto:tonnhofer@lat-lon.de">Oliver Tonnhofer</a>
- * @author last edited by: $Author$
- * 
- * @version $Revision$, $Date$
  */
 public class OWSException extends Exception {
 
-    /** */
-    private static final long serialVersionUID = 4274635657976045225L;
+	/** */
+	private static final long serialVersionUID = 4274635657976045225L;
 
-    // OWS GetCapabilities exceptions
-    /**
-     * a required parameter is missing
-     */
-    public static final String MISSING_PARAMETER_VALUE = "MissingParameterValue";
-    
-    /**
-     * Server processing failed
-     */
-    public static final String OPERATION_PROCESSING_FAILED = "OperationProcessingFailed";
-            
-    /**
-     * the parameter value is invalid
-     */
-    public static final String INVALID_PARAMETER_VALUE = "InvalidParameterValue";
+	// OWS GetCapabilities exceptions
+	/**
+	 * a required parameter is missing
+	 */
+	public static final String MISSING_PARAMETER_VALUE = "MissingParameterValue";
 
-    /**
-     * the parameter value of the format parameter is invalid
-     */
-    public static final String INVALID_FORMAT = "InvalidFormat";
+	/**
+	 * Server processing failed
+	 */
+	public static final String OPERATION_PROCESSING_FAILED = "OperationProcessingFailed";
 
-    /**
-     * the layer is not defined
-     */
-    public static final String LAYER_NOT_DEFINED = "LayerNotDefined";
+	/**
+	 * the parameter value is invalid
+	 */
+	public static final String INVALID_PARAMETER_VALUE = "InvalidParameterValue";
 
-    /**
-     * what the text says
-     */
-    public static final String STYLE_NOT_DEFINED = "StyleNotDefined";
+	/**
+	 * A Transaction (see Clause 15) has attempted to insert or change the value of a data
+	 * component in a way that violates the schema of the feature. (WFS 2.0.0, Table 3 -
+	 * WFS exception codes)
+	 */
+	public static final String INVALID_VALUE = "InvalidValue";
 
-    /**
-     * what the text says
-     */
-    public static final String INVALID_SRS = "InvalidSRS";
+	/**
+	 * the parameter value of the format parameter is invalid
+	 */
+	public static final String INVALID_FORMAT = "InvalidFormat";
 
-    /***/
-    public static final String INVALID_CRS = "InvalidCRS";
+	/**
+	 * the layer is not defined
+	 */
+	public static final String LAYER_NOT_DEFINED = "LayerNotDefined";
 
-    /***/
-    public static final String INVALID_POINT = "InvalidPoint";
+	/**
+	 * what the text says
+	 */
+	public static final String STYLE_NOT_DEFINED = "StyleNotDefined";
 
-    /**
-     * server doesn't support any of the requested AcceptVersions
-     */
-    public static final String VERSION_NEGOTIATION_FAILED = "VersionNegotiationFailed";
+	/**
+	 * what the text says
+	 */
+	public static final String INVALID_SRS = "InvalidSRS";
 
-    /**
-     * updateSequence value is greater than the current value
-     */
-    public static final String INVALID_UPDATE_SEQUENCE = "InvalidUpdateSequence";
+	/***/
+	public static final String INVALID_CRS = "InvalidCRS";
 
-    /**
-     * what the text says
-     */
-    public static final String CURRENT_UPDATE_SEQUENCE = "CurrentUpdateSequence";
+	/***/
+	public static final String INVALID_POINT = "InvalidPoint";
 
-    // OSW standard exceptions (+GetCapabilities exceptions)
-    /**
-     * the requested operation is not supported
-     */
-    public static final String OPERATION_NOT_SUPPORTED = "OperationNotSupported";
+	/**
+	 * server doesn't support any of the requested AcceptVersions
+	 */
+	public static final String VERSION_NEGOTIATION_FAILED = "VersionNegotiationFailed";
 
-    /**
-     * the requested option is not supported
-     */
-    public static final String OPTION_NOT_SUPPORTED = "OptionNotSupported";
+	/**
+	 * updateSequence value is greater than the current value
+	 */
+	public static final String INVALID_UPDATE_SEQUENCE = "InvalidUpdateSequence";
 
-    /**
-     * the date is not parsable
-     */
-    public static final String INVALID_DATE = "InvalidDate";
+	/**
+	 * what the text says
+	 */
+	public static final String CURRENT_UPDATE_SEQUENCE = "CurrentUpdateSequence";
 
-    /**
-     * exception code for all not known exceptions
-     */
-    public static final String NO_APPLICABLE_CODE = "NoApplicableCode";
-        
-    private final String exceptionCode;
+	/**
+	 * what the text says
+	 */
+	public static final String LOCK_HAS_EXPIRED = "LockHasExpired";
 
-    private final String locator;
+	/**
+	 * the layer is not queryable by get feature info
+	 */
+	public static final String LAYER_NOT_QUERYABLE = "LayerNotQueryable";
 
-    private final List<String> messages;
+	// OSW standard exceptions (+GetCapabilities exceptions)
+	/**
+	 * the requested operation is not supported
+	 */
+	public static final String OPERATION_NOT_SUPPORTED = "OperationNotSupported";
 
-    /**
-     * Create a new OWSException.
-     * 
-     * @param message
-     *            the exception text
-     * @param exceptionCode
-     *            defining a machine readable code.
-     */
-    public OWSException( String message, String exceptionCode ) {
-        super( message );
-        this.exceptionCode = exceptionCode;
-        this.locator = "";
-        messages = Collections.singletonList( message );
-    }
+	/**
+	 * the requested option is not supported
+	 */
+	public static final String OPTION_NOT_SUPPORTED = "OptionNotSupported";
 
-    /**
-     * Create a new OWSException.
-     * 
-     * @param message
-     *            the exception text
-     * @param cause
-     *            of this exception to happen.
-     * @param exceptionCode
-     *            defining a machine readable code.
-     */
-    public OWSException( String message, Throwable cause, String exceptionCode ) {
-        super( message, cause );
-        this.exceptionCode = exceptionCode;
-        this.locator = "";
-        messages = Collections.singletonList( message );
-    }
+	/**
+	 * the date is not parsable
+	 */
+	public static final String INVALID_DATE = "InvalidDate";
 
-    /**
-     * Create a new OWSException.
-     * 
-     * @param message
-     *            the exception text
-     * @param exceptionCode
-     *            defining a machine readable code.
-     * @param locator
-     *            the exception location
-     */
-    public OWSException( String message, String exceptionCode, String locator ) {
-        super( message );
-        this.exceptionCode = exceptionCode;
-        this.locator = locator;
-        messages = Collections.singletonList( message );
-    }
+	/**
+	 * exception code for all not known exceptions
+	 */
+	public static final String NO_APPLICABLE_CODE = "NoApplicableCode";
 
-    public OWSException( List<String> messages, String exceptionCode, String locator ) {
-        super( StringUtils.concat( messages, ";" ) );
-        this.messages = messages;
-        this.exceptionCode = exceptionCode;
-        this.locator = locator;
-    }
+	/**
+	 * exception code indicating an HTTP 404 error
+	 */
+	public static final String NOT_FOUND = "NotFound";
 
-    /**
-     * Creates a new {@link OWSException} from an {@link InvalidParameterValueException}.
-     * 
-     * @param cause
-     *            causing exception
-     */
-    public OWSException( InvalidParameterValueException cause ) {
-        super( cause.getMessage() );
-        this.exceptionCode = INVALID_PARAMETER_VALUE;
-        locator = cause.getName();
-        messages = Collections.singletonList( cause.getMessage() );
-    }
+	/**
+	 * the identifier specified for a stored query expression is a duplicate.
+	 */
+	public static final String DUPLICATE_STORED_QUERY_ID_VALUE = "DuplicateStoredQueryIdValue";
 
-    /**
-     * Creates a new {@link OWSException} from an {@link MissingParameterException}.
-     * 
-     * @param cause
-     *            causing exception
-     */
-    public OWSException( MissingParameterException cause ) {
-        super( cause.getMessage() );
-        this.exceptionCode = MISSING_PARAMETER_VALUE;
-        locator = cause.getName();
-        messages = Collections.singletonList( cause.getMessage() );
-    }
+	private final String exceptionCode;
 
-    /**
-     * @return the locator
-     */
-    public final String getLocator() {
-        return locator;
-    }
+	private final String locator;
 
-    public final String getExceptionCode() {
-        return exceptionCode;
-    }
+	private final List<String> messages;
 
-    public final List<String> getMessages() {
-        return messages;
-    }
+	/**
+	 * Create a new OWSException.
+	 * @param message the exception text
+	 * @param exceptionCode defining a machine readable code.
+	 */
+	public OWSException(String message, String exceptionCode) {
+		super(message);
+		this.exceptionCode = exceptionCode;
+		this.locator = "";
+		messages = Collections.singletonList(message);
+	}
+
+	/**
+	 * Create a new OWSException.
+	 * @param message the exception text
+	 * @param cause of this exception to happen.
+	 * @param exceptionCode defining a machine readable code.
+	 */
+	public OWSException(String message, Throwable cause, String exceptionCode) {
+		super(message, cause);
+		this.exceptionCode = exceptionCode;
+		this.locator = "";
+		messages = Collections.singletonList(message);
+	}
+
+	/**
+	 * Create a new OWSException.
+	 * @param message the exception text
+	 * @param exceptionCode defining a machine readable code.
+	 * @param locator the exception location
+	 */
+	public OWSException(String message, String exceptionCode, String locator) {
+		super(message);
+		this.exceptionCode = exceptionCode;
+		this.locator = locator;
+		messages = Collections.singletonList(message);
+	}
+
+	public OWSException(List<String> messages, String exceptionCode, String locator) {
+		super(StringUtils.concat(messages, ";"));
+		this.messages = messages;
+		this.exceptionCode = exceptionCode;
+		this.locator = locator;
+	}
+
+	/**
+	 * Creates a new {@link OWSException} from an {@link InvalidParameterValueException}.
+	 * @param cause causing exception
+	 */
+	public OWSException(InvalidParameterValueException cause) {
+		super(cause.getMessage());
+		this.exceptionCode = INVALID_PARAMETER_VALUE;
+		locator = cause.getName();
+		messages = Collections.singletonList(cause.getMessage());
+	}
+
+	/**
+	 * Creates a new {@link OWSException} from an {@link MissingParameterException}.
+	 * @param cause causing exception
+	 */
+	public OWSException(MissingParameterException cause) {
+		super(cause.getMessage());
+		this.exceptionCode = MISSING_PARAMETER_VALUE;
+		locator = cause.getName();
+		messages = Collections.singletonList(cause.getMessage());
+	}
+
+	/**
+	 * @return the locator
+	 */
+	public final String getLocator() {
+		return locator;
+	}
+
+	public final String getExceptionCode() {
+		return exceptionCode;
+	}
+
+	public final List<String> getMessages() {
+		return messages;
+	}
+
 }

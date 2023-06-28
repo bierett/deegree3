@@ -1,4 +1,3 @@
-//$HeadURL: svn+ssh://mschneider@svn.wald.intevation.org/deegree/deegree3/services/trunk/src/org/deegree/services/controller/ows/OWSException.java $
 /*----------------------------------------------------------------------------
  This file is part of deegree, http://deegree.org/
  Copyright (C) 2001-2009 by:
@@ -55,232 +54,233 @@ import org.deegree.geometry.primitive.Point;
 
 /**
  * Supplies some basic exports methods for deegree/commons to ows mappings.
- * 
+ *
  * @author <a href="mailto:bezema@lat-lon.de">Rutger Bezema</a>
- * @author last edited by: $Author: rbezema $
- * @version $Revision: $, $Date: $
  */
 public class OWSCommonXMLAdapter extends XMLAdapter {
 
-    /**
-     * ows namespace without version
-     */
-    public static final String OWS_NS = "http://www.opengis.net/ows";
+	/**
+	 * ows namespace without version
+	 */
+	public static final String OWS_NS = "http://www.opengis.net/ows";
 
-    /**
-     * ows 1.1 version
-     */
-    public static final String OWS110_NS = "http://www.opengis.net/ows/1.1";
+	/**
+	 * ows 1.1 version
+	 */
+	public static final String OWS110_NS = "http://www.opengis.net/ows/1.1";
 
-    /**
-     * normal xml namespace
-     */
-    public static final String XML_NS = "http://www.w3.org/XML/1998/namespace";
+	/**
+	 * ows 2.0 version
+	 */
+	public static final String OWS200_NS = "http://www.opengis.net/ows/2.0";
 
-    /**
-     * the ows prefix
-     */
-    public static final String OWS_PREFIX = "ows";
+	/**
+	 * normal xml namespace
+	 */
+	public static final String XML_NS = "http://www.w3.org/XML/1998/namespace";
 
-    /**
-     * the ows 1.1.0 prefix
-     */
-    public static final String OWS110_PREFIX = "ows110";
+	/**
+	 * the ows prefix
+	 */
+	public static final String OWS_PREFIX = "ows";
 
-    /**
-     * the xml prefix
-     */
-    public static final String XML_PREFIX = "xml";
+	/**
+	 * the ows 1.1.0 prefix
+	 */
+	public static final String OWS110_PREFIX = "ows110";
 
-    private static final GeometryFactory geomFac = new GeometryFactory();
+	/**
+	 * the ows 2.0.0 prefix
+	 */
+	public static final String OWS200_PREFIX = "ows200";
 
-    static {
-        // add to common namespaces from xml adapter
-        nsContext.addNamespace( OWS_PREFIX, OWS_NS );
-        nsContext.addNamespace( OWS110_PREFIX, OWS110_NS );
-        nsContext.addNamespace( XML_PREFIX, XML_NS );
-    }
-    
-    /**
-     * Parses the given element of type <code>ows:BoundingBoxType</code>.
-     * 
-     * @param boundingBoxDataElement
-     *            element of type <code>ows:BoundingBoxType</code>
-     * @param defaultCRS
-     *            default CRS to use if no crs attribute is specified
-     * @return corresponding <code>Envelope</code> object
-     * @throws XMLParsingException
-     *             if a syntactical or semantical error has been encountered in the element's contents
-     */
-    public Envelope parseBoundingBoxType( OMElement boundingBoxDataElement, ICRS defaultCRS ) {
+	/**
+	 * the xml prefix
+	 */
+	public static final String XML_PREFIX = "xml";
 
-        // "ows:LowerCorner" element (minOccurs="1", maxOccurs="1")
-        double[] lowerCorner = parseDoubleList( getRequiredElement( boundingBoxDataElement,
-                                                                    new XPath( "ows110:LowerCorner", nsContext ) ) );
+	private static final GeometryFactory geomFac = new GeometryFactory();
 
-        // "ows:UpperCorner" element (minOccurs="1", maxOccurs="1")
-        double[] upperCorner = parseDoubleList( getRequiredElement( boundingBoxDataElement,
-                                                                    new XPath( "ows110:UpperCorner", nsContext ) ) );
+	static {
+		// add to common namespaces from xml adapter
+		nsContext.addNamespace(OWS_PREFIX, OWS_NS);
+		nsContext.addNamespace(OWS110_PREFIX, OWS110_NS);
+		nsContext.addNamespace(OWS200_PREFIX, OWS200_NS);
+		nsContext.addNamespace(XML_PREFIX, XML_NS);
+	}
 
-        // "crs" attribute (optional)
-        ICRS crs = defaultCRS;
-        String crsName = boundingBoxDataElement.getAttributeValue( new QName( "crs" ) );
-        if ( crsName == null ) {
-            crs = CRSManager.getCRSRef( crsName );
-        }
+	/**
+	 * Parses the given element of type <code>ows:BoundingBoxType</code>.
+	 * @param boundingBoxDataElement element of type <code>ows:BoundingBoxType</code>
+	 * @param defaultCRS default CRS to use if no crs attribute is specified
+	 * @return corresponding <code>Envelope</code> object
+	 * @throws XMLParsingException if a syntactical or semantical error has been
+	 * encountered in the element's contents
+	 */
+	public Envelope parseBoundingBoxType(OMElement boundingBoxDataElement, ICRS defaultCRS) {
 
-        // "dimensions" attribute (optional)
-        // int dimensions = getNodeAsInt( boundingBoxDataElement, new XPath( "@dimensions", nsContext ), -1 );
+		// "ows:LowerCorner" element (minOccurs="1", maxOccurs="1")
+		double[] lowerCorner = parseDoubleList(
+				getRequiredElement(boundingBoxDataElement, new XPath("ows110:LowerCorner", nsContext)));
 
-        return geomFac.createEnvelope( lowerCorner, upperCorner, crs );
-    }
+		// "ows:UpperCorner" element (minOccurs="1", maxOccurs="1")
+		double[] upperCorner = parseDoubleList(
+				getRequiredElement(boundingBoxDataElement, new XPath("ows110:UpperCorner", nsContext)));
 
-    private double[] parseDoubleList( OMElement positionElement )
-                            throws XMLParsingException {
-        String s = positionElement.getText();
-        // don't use String.split(regex) here (speed)
-        StringTokenizer st = new StringTokenizer( s );
-        List<String> tokens = new ArrayList<String>();
-        while ( st.hasMoreTokens() ) {
-            tokens.add( st.nextToken() );
-        }
-        double[] doubles = new double[tokens.size()];
-        for ( int i = 0; i < doubles.length; i++ ) {
-            try {
-                doubles[i] = Double.parseDouble( tokens.get( i ) );
-            } catch ( NumberFormatException e ) {
-                String msg = "Value '" + tokens.get( i ) + "' cannot be parsed as a double.";
-                throw new XMLParsingException( this, positionElement, msg );
-            }
-        }
-        return doubles;
-    }
+		// "crs" attribute (optional)
+		ICRS crs = defaultCRS;
+		String crsName = boundingBoxDataElement.getAttributeValue(new QName("crs"));
+		if (crsName == null) {
+			crs = CRSManager.getCRSRef(crsName);
+		}
 
-    /**
-     * Exports an {@link Envelope} as a <code>ows:BoundingBoxType</code>.
-     * 
-     * @param writer
-     * @param bbox
-     *            envelope to be exported
-     * @throws XMLStreamException
-     */
-    public static void exportBoundingBoxType( XMLStreamWriter writer, Envelope bbox )
-                            throws XMLStreamException {
+		// "dimensions" attribute (optional)
+		// int dimensions = getNodeAsInt( boundingBoxDataElement, new XPath(
+		// "@dimensions", nsContext ), -1 );
 
-        // "crs" attribute (optional)
-        if ( bbox.getCoordinateSystem() != null ) {
-            writer.writeAttribute( "crs", bbox.getCoordinateSystem().getAlias() );
-        }
+		return geomFac.createEnvelope(lowerCorner, upperCorner, crs);
+	}
 
-        // "dimensions" attribute (optional)
-        writer.writeAttribute( "dimensions", "" + bbox.getCoordinateDimension() );
+	private double[] parseDoubleList(OMElement positionElement) throws XMLParsingException {
+		String s = positionElement.getText();
+		// don't use String.split(regex) here (speed)
+		StringTokenizer st = new StringTokenizer(s);
+		List<String> tokens = new ArrayList<String>();
+		while (st.hasMoreTokens()) {
+			tokens.add(st.nextToken());
+		}
+		double[] doubles = new double[tokens.size()];
+		for (int i = 0; i < doubles.length; i++) {
+			try {
+				doubles[i] = Double.parseDouble(tokens.get(i));
+			}
+			catch (NumberFormatException e) {
+				String msg = "Value '" + tokens.get(i) + "' cannot be parsed as a double.";
+				throw new XMLParsingException(this, positionElement, msg);
+			}
+		}
+		return doubles;
+	}
 
-        // "ows:LowerCorner" element (minOccurs="1", maxOccurs="1")
-        writer.writeStartElement( OWS110_NS, "LowerCorner" );
-        exportPositionType( writer, bbox.getMin() );
-        writer.writeEndElement();
+	/**
+	 * Exports an {@link Envelope} as a <code>ows:BoundingBoxType</code>.
+	 * @param writer
+	 * @param bbox envelope to be exported
+	 * @throws XMLStreamException
+	 */
+	public static void exportBoundingBoxType(XMLStreamWriter writer, Envelope bbox) throws XMLStreamException {
 
-        // "ows:UpperCorner" element (minOccurs="1", maxOccurs="1")
-        writer.writeStartElement( OWS110_NS, "UpperCorner" );
-        exportPositionType( writer, bbox.getMax() );
-        writer.writeEndElement();
-    }
+		// "crs" attribute (optional)
+		if (bbox.getCoordinateSystem() != null) {
+			writer.writeAttribute("crs", bbox.getCoordinateSystem().getAlias());
+		}
 
-    // /**
-    // * Exports an {@link BoundingBoxType} as an <code>ows:BoundingBoxType</code>. Coordinates will be separated with a
-    // * space.
-    // *
-    // * @param writer
-    // * @param bbox
-    // * to be exported
-    // * @throws XMLStreamException
-    // */
-    // public static void exportBoundingBoxType110( XMLStreamWriter writer, BoundingBoxType bbox )
-    // throws XMLStreamException {
-    //
-    // if ( bbox != null ) {
-    // exportBoundingBoxType( writer, bbox, OWS110_NS );
-    // }
-    // }
-    //
-    // /**
-    // * @param writer
-    // * @param bbox
-    // * @param owsNS
-    // * @throws XMLStreamException
-    // */
-    // private static void exportBoundingBoxType( XMLStreamWriter writer, BoundingBoxType bbox, String owsNS )
-    // throws XMLStreamException {
-    // writer.writeStartElement( owsNS, "BoundingBox" );
-    // // "crs" attribute (optional)
-    // if ( bbox.getCrs() != null ) {
-    // writer.writeAttribute( "crs", bbox.getCrs() );
-    // }
-    //
-    // // "dimensions" attribute (optional)
-    // writer.writeAttribute( "dimensions", "" + bbox.getDimensions() );
-    //
-    // // "ows:LowerCorner" element (minOccurs="1", maxOccurs="1")
-    // writer.writeStartElement( owsNS, "LowerCorner" );
-    // exportCoordinateList( writer, bbox.getLowerCorner(), " " );
-    // writer.writeEndElement();
-    //
-    // // "ows:UpperCorner" element (minOccurs="1", maxOccurs="1")
-    // writer.writeStartElement( owsNS, "UpperCorner" );
-    // exportCoordinateList( writer, bbox.getUpperCorner(), " " );
-    // writer.writeEndElement();
-    // writer.writeEndElement();// OWS110_NS, "BoundingBox"
-    //
-    // }
+		// "dimensions" attribute (optional)
+		writer.writeAttribute("dimensions", "" + bbox.getCoordinateDimension());
 
-    /**
-     * @param writer
-     *            to export to
-     * @param coordinates
-     *            to be exported
-     * @param separator
-     *            to use between coordinates, if <code>null</code> a space character will be used.
-     * @throws XMLStreamException
-     *             if the writing fails.
-     */
-    public static void exportCoordinateList( XMLStreamWriter writer, List<? extends Number> coordinates,
-                                             String separator )
-                            throws XMLStreamException {
-        if ( coordinates != null && !coordinates.isEmpty() ) {
-            String sep = separator;
-            if ( separator == null || "".equals( separator ) ) {
-                sep = " ";
-            }
-            int size = coordinates.size();
-            StringBuilder sb = new StringBuilder( size );
-            for ( int i = 0; i < size; ++i ) {
-                sb.append( coordinates.get( i ) );
-                if ( ( i + 1 ) < size ) {
-                    sb.append( sep );
-                }
-            }
-            writer.writeCharacters( sb.toString() );
-        }
+		// "ows:LowerCorner" element (minOccurs="1", maxOccurs="1")
+		writer.writeStartElement(OWS110_NS, "LowerCorner");
+		exportPositionType(writer, bbox.getMin());
+		writer.writeEndElement();
 
-    }
+		// "ows:UpperCorner" element (minOccurs="1", maxOccurs="1")
+		writer.writeStartElement(OWS110_NS, "UpperCorner");
+		exportPositionType(writer, bbox.getMax());
+		writer.writeEndElement();
+	}
 
-    /**
-     * Exports a {@link Point} as a <code>ows:PositionType</code>.
-     * 
-     * @param writer
-     * @param pos
-     *            point to be exported
-     * @throws XMLStreamException
-     */
-    public static void exportPositionType( XMLStreamWriter writer, Point pos )
-                            throws XMLStreamException {
-        boolean needsDelim = false;
-        for ( double coord : pos.getAsArray() ) {
-            if ( needsDelim ) {
-                writer.writeCharacters( " " );
-            }
-            writer.writeCharacters( "" + coord );
-            needsDelim = true;
-        }
-    }    
+	// /**
+	// * Exports an {@link BoundingBoxType} as an <code>ows:BoundingBoxType</code>.
+	// Coordinates will be separated with a
+	// * space.
+	// *
+	// * @param writer
+	// * @param bbox
+	// * to be exported
+	// * @throws XMLStreamException
+	// */
+	// public static void exportBoundingBoxType110( XMLStreamWriter writer,
+	// BoundingBoxType bbox )
+	// throws XMLStreamException {
+	//
+	// if ( bbox != null ) {
+	// exportBoundingBoxType( writer, bbox, OWS110_NS );
+	// }
+	// }
+	//
+	// /**
+	// * @param writer
+	// * @param bbox
+	// * @param owsNS
+	// * @throws XMLStreamException
+	// */
+	// private static void exportBoundingBoxType( XMLStreamWriter writer, BoundingBoxType
+	// bbox, String owsNS )
+	// throws XMLStreamException {
+	// writer.writeStartElement( owsNS, "BoundingBox" );
+	// // "crs" attribute (optional)
+	// if ( bbox.getCrs() != null ) {
+	// writer.writeAttribute( "crs", bbox.getCrs() );
+	// }
+	//
+	// // "dimensions" attribute (optional)
+	// writer.writeAttribute( "dimensions", "" + bbox.getDimensions() );
+	//
+	// // "ows:LowerCorner" element (minOccurs="1", maxOccurs="1")
+	// writer.writeStartElement( owsNS, "LowerCorner" );
+	// exportCoordinateList( writer, bbox.getLowerCorner(), " " );
+	// writer.writeEndElement();
+	//
+	// // "ows:UpperCorner" element (minOccurs="1", maxOccurs="1")
+	// writer.writeStartElement( owsNS, "UpperCorner" );
+	// exportCoordinateList( writer, bbox.getUpperCorner(), " " );
+	// writer.writeEndElement();
+	// writer.writeEndElement();// OWS110_NS, "BoundingBox"
+	//
+	// }
+
+	/**
+	 * @param writer to export to
+	 * @param coordinates to be exported
+	 * @param separator to use between coordinates, if <code>null</code> a space character
+	 * will be used.
+	 * @throws XMLStreamException if the writing fails.
+	 */
+	public static void exportCoordinateList(XMLStreamWriter writer, List<? extends Number> coordinates,
+			String separator) throws XMLStreamException {
+		if (coordinates != null && !coordinates.isEmpty()) {
+			String sep = separator;
+			if (separator == null || "".equals(separator)) {
+				sep = " ";
+			}
+			int size = coordinates.size();
+			StringBuilder sb = new StringBuilder(size);
+			for (int i = 0; i < size; ++i) {
+				sb.append(coordinates.get(i));
+				if ((i + 1) < size) {
+					sb.append(sep);
+				}
+			}
+			writer.writeCharacters(sb.toString());
+		}
+
+	}
+
+	/**
+	 * Exports a {@link Point} as a <code>ows:PositionType</code>.
+	 * @param writer
+	 * @param pos point to be exported
+	 * @throws XMLStreamException
+	 */
+	public static void exportPositionType(XMLStreamWriter writer, Point pos) throws XMLStreamException {
+		boolean needsDelim = false;
+		for (double coord : pos.getAsArray()) {
+			if (needsDelim) {
+				writer.writeCharacters(" ");
+			}
+			writer.writeCharacters("" + coord);
+			needsDelim = true;
+		}
+	}
+
 }

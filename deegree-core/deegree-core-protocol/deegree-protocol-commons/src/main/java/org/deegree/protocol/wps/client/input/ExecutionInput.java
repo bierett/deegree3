@@ -1,4 +1,3 @@
-//$HeadURL$
 /*----------------------------------------------------------------------------
  This file is part of deegree, http://deegree.org/
  Copyright (C) 2001-2009 by:
@@ -35,48 +34,42 @@
  ----------------------------------------------------------------------------*/
 package org.deegree.protocol.wps.client.input;
 
-import java.net.URL;
+import java.net.URI;
 
 import org.deegree.commons.tom.ows.CodeType;
 
 /**
  * Abstract base class for input parameters provided for a process execution.
- * 
+ *
  * @author <a href="mailto:ionita@lat-lon.de">Andrei Ionita</a>
  * @author <a href="mailto:schneider@lat-lon.de">Markus Schneider</a>
- * @author last edited by: $Author$
- * 
- * @version $Revision$, $Date$
  */
 public abstract class ExecutionInput {
 
-    private CodeType id;
+	private CodeType id;
 
-    /**
-     * Creates a new {@link ExecutionInput} instance.
-     * 
-     * @param id
-     *            parameter identifier, must not be <code>null</code>
-     */
-    protected ExecutionInput( CodeType id ) {
-        this.id = id;
-    }
+	/**
+	 * Creates a new {@link ExecutionInput} instance.
+	 * @param id parameter identifier, must not be <code>null</code>
+	 */
+	protected ExecutionInput(CodeType id) {
+		this.id = id;
+	}
 
-    /**
-     * Returns the parameter identifier.
-     * 
-     * @return the parameter identifier, never <code>null</code>
-     */
-    public CodeType getId() {
-        return id;
-    }
+	/**
+	 * Returns the parameter identifier.
+	 * @return the parameter identifier, never <code>null</code>
+	 */
+	public CodeType getId() {
+		return id;
+	}
 
-    /**
-     * Returns the web-accessible URL for retrieving the input value.
-     * 
-     * @return web-accessible URL, can be <code>null</code> (not web-acessible)
-     */
-    public URL getWebAccessibleURL() {
-        return null;
-    }
+	/**
+	 * Returns the web-accessible URI for retrieving the input value.
+	 * @return web-accessible URI, can be <code>null</code> (not web-acessible)
+	 */
+	public URI getWebAccessibleURI() {
+		return null;
+	}
+
 }

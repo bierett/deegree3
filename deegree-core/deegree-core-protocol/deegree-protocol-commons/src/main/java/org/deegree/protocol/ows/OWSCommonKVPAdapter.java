@@ -1,4 +1,3 @@
-//$HeadURL$
 /*----------------------------------------------------------------------------
  This file is part of deegree, http://deegree.org/
  Copyright (C) 2001-2011 by:
@@ -35,6 +34,9 @@
  ----------------------------------------------------------------------------*/
 package org.deegree.protocol.ows;
 
+import static java.lang.Double.parseDouble;
+import static org.deegree.cs.persistence.CRSManager.getCRSRef;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,38 +46,41 @@ import org.deegree.geometry.GeometryFactory;
 
 /**
  * Parser for KVP-encoded OWS Common constructs.
- * 
+ *
  * @author <a href="mailto:schneider@lat-lon.de">Markus Schneider</a>
- * @author last edited by: $Author$
- * 
- * @version $Revision$, $Date$
  */
 public class OWSCommonKVPAdapter {
 
-    private final static GeometryFactory geomFac = new GeometryFactory();
+	private final static GeometryFactory geomFac = new GeometryFactory();
 
-    /**
-     * Parses the given KVP parameter as an {@link Envelope} (according to OWS 1.1.0, 10.2.3).
-     * 
-     * @param bboxStr
-     *            encoded bounding box, must not be <code>null</code>
-     * @param defaultCrs
-     *            crs to use when not explicitly encoded, may be <code>null</code>
-     * @return decoded {@link Envelope}, never <code>null</code>
-     */
-    public static Envelope parseBBox( String bboxStr, ICRS defaultCrs ) {
+	/**
+	 * Parses the given KVP parameter as an {@link Envelope} (according to OWS 1.1.0,
+	 * 10.2.3).
+	 * @param bboxStr encoded bounding box, must not be <code>null</code>
+	 * @param defaultCrs crs to use when not explicitly encoded, may be <code>null</code>
+	 * @return decoded {@link Envelope}, never <code>null</code>
+	 */
+	public static Envelope parseBBox(final String bboxStr, final ICRS defaultCrs) {
+		final String[] tokens = bboxStr.split(",");
+		final int n = tokens.length / 2;
+		final List<Double> lowerCorner = new ArrayList<Double>(n);
+		for (int i = 0; i < n; i++) {
+			lowerCorner.add(parseDouble(tokens[i]));
+		}
+		final List<Double> upperCorner = new ArrayList<Double>(n);
+		for (int i = n; i < 2 * n; i++) {
+			upperCorner.add(parseDouble(tokens[i]));
+		}
+		final ICRS bboxCrs = getEncodedCrs(tokens);
+		final ICRS crs = bboxCrs != null ? bboxCrs : defaultCrs;
+		return geomFac.createEnvelope(lowerCorner, upperCorner, crs);
+	}
 
-        String[] coordList = bboxStr.split( "," );
+	private static ICRS getEncodedCrs(final String[] tokens) {
+		if (tokens.length % 2 == 1) {
+			return getCRSRef(tokens[tokens.length - 1]);
+		}
+		return null;
+	}
 
-        int n = coordList.length / 2;
-        List<Double> lowerCorner = new ArrayList<Double>( n );
-        for ( int i = 0; i < n; i++ ) {
-            lowerCorner.add( Double.parseDouble( coordList[i] ) );
-        }
-        List<Double> upperCorner = new ArrayList<Double>( n );
-        for ( int i = n; i < 2 * n; i++ ) {
-            upperCorner.add( Double.parseDouble( coordList[i] ) );
-        }
-        return geomFac.createEnvelope( lowerCorner, upperCorner, defaultCrs );
-    }
 }

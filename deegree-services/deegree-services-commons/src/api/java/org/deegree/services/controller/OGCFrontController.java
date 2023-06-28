@@ -1,4 +1,3 @@
-//$HeadURL$
 /*----------------------------------------------------------------------------
  This file is part of deegree, http://deegree.org/
  Copyright (C) 2001-2009 by:
@@ -37,6 +36,7 @@ package org.deegree.services.controller;
 
 import static java.io.File.createTempFile;
 import static java.util.Collections.emptyList;
+import static org.deegree.commons.ows.exception.OWSException.NOT_FOUND;
 import static org.deegree.commons.ows.exception.OWSException.NO_APPLICABLE_CODE;
 import static org.deegree.commons.tom.ows.Version.parseVersion;
 import static org.reflections.util.ClasspathHelper.forClassLoader;
@@ -49,7 +49,6 @@ import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
@@ -80,12 +79,11 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLOutputFactory;
 import javax.xml.stream.XMLStreamReader;
 
+import org.apache.axiom.om.OMAbstractFactory;
 import org.apache.axiom.om.OMElement;
 import org.apache.axiom.soap.SOAPEnvelope;
 import org.apache.axiom.soap.SOAPFactory;
 import org.apache.axiom.soap.impl.builder.StAXSOAPModelBuilder;
-import org.apache.axiom.soap.impl.llom.soap11.SOAP11Factory;
-import org.apache.axiom.soap.impl.llom.soap12.SOAP12Factory;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.FileItemFactory;
 import org.apache.commons.fileupload.FileUploadException;
@@ -93,15 +91,12 @@ import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.logging.LogFactory;
-import org.apache.log4j.LogManager;
-import org.deegree.commons.annotations.LoggingNotes;
 import org.deegree.commons.concurrent.Executor;
 import org.deegree.commons.config.DeegreeWorkspace;
 import org.deegree.commons.config.ResourceInitException;
 import org.deegree.commons.ows.exception.OWSException;
 import org.deegree.commons.tom.ows.Version;
 import org.deegree.commons.utils.DeegreeAALogoUtils;
-import org.deegree.commons.utils.io.LoggingInputStream;
 import org.deegree.commons.utils.kvp.KVPUtils;
 import org.deegree.commons.xml.XMLAdapter;
 import org.deegree.commons.xml.XMLProcessingException;
@@ -115,7 +110,7 @@ import org.deegree.services.authentication.SecurityException;
 import org.deegree.services.controller.exception.serializer.XMLExceptionSerializer;
 import org.deegree.services.controller.security.SecurityConfiguration;
 import org.deegree.services.controller.utils.HttpResponseBuffer;
-import org.deegree.services.controller.utils.LoggingHttpResponseWrapper;
+import org.deegree.services.controller.utils.LoggingHttpRequestWrapper;
 import org.deegree.services.controller.watchdog.RequestWatchdog;
 import org.deegree.services.jaxb.controller.DeegreeServiceControllerType;
 import org.deegree.services.jaxb.controller.DeegreeServiceControllerType.RequestTimeoutMilliseconds;
@@ -153,11 +148,8 @@ import org.slf4j.Logger;
  * 
  * @author <a href="mailto:bezema@lat-lon.de">Rutger Bezema </a>
  * @author <a href="mailto:schneider@lat-lon.de">Markus Schneider </a>
- * @author last edited by: $Author$
  * 
- * @version $Revision$, $Date$
  */
-@LoggingNotes(debug = "logs the server startup, incoming requests and timing info, also enables enhanced request logging in $HOME/.deegree")
 public class OGCFrontController extends HttpServlet {
 
     private static final Logger LOG = getLogger( OGCFrontController.class );
@@ -196,6 +188,8 @@ public class OGCFrontController extends HttpServlet {
     private transient Collection<ModuleInfo> modulesInfo;
 
     private transient String version;
+
+    private boolean addDeegreeVersionToHeader = false;
 
     /**
      * Returns the only instance of this class.
@@ -255,7 +249,7 @@ public class OGCFrontController extends HttpServlet {
      * @return URL, never <code>null</code> (without trailing slash or question mark)
      */
     public static String getHttpPostURL() {
-        return getContext().getServiceUrl();
+        return getHttpURL();
     }
 
     /**
@@ -271,7 +265,7 @@ public class OGCFrontController extends HttpServlet {
      * @return URL (for GET requests), never <code>null</code> (with trailing question mark)
      */
     public static String getHttpGetURL() {
-        return getContext().getServiceUrl() + "?";
+        return getHttpURL() + "?";
     }
 
     /**
@@ -298,11 +292,13 @@ public class OGCFrontController extends HttpServlet {
         return getInstance().modulesInfo;
     }
 
-    private static void addHeaders( HttpServletResponse response ) {
+    private void addHeaders( HttpServletResponse response ) {
         // add cache control headers
         response.addHeader( "Cache-Control", "no-cache, no-store" );
         // add deegree header
-        response.addHeader( "deegree-version", getInstance().version );
+        if ( addDeegreeVersionToHeader ) {
+            response.addHeader( "deegree-version", getInstance().version );
+        }
     }
 
     /**
@@ -317,7 +313,8 @@ public class OGCFrontController extends HttpServlet {
     @Override
     protected void doGet( HttpServletRequest request, HttpServletResponse response )
                             throws ServletException, IOException {
-        HttpResponseBuffer responseBuffer = createHttpResponseBuffer( request, response );
+        request = createHttpRequest( request );
+        HttpResponseBuffer responseBuffer = new HttpResponseBuffer( response, request );
 
         try {
             long entryTime = System.currentTimeMillis();
@@ -429,8 +426,8 @@ public class OGCFrontController extends HttpServlet {
     @Override
     protected void doPost( HttpServletRequest request, HttpServletResponse response )
                             throws ServletException, IOException {
-
-        HttpResponseBuffer responseBuffer = createHttpResponseBuffer( request, response );
+        request = createHttpRequest( request );
+        HttpResponseBuffer responseBuffer = new HttpResponseBuffer( response, request );
 
         try {
             logHeaders( request );
@@ -526,42 +523,22 @@ public class OGCFrontController extends HttpServlet {
         }
     }
 
-    private HttpResponseBuffer createHttpResponseBuffer( HttpServletRequest request, HttpServletResponse response )
-                            throws FileNotFoundException, IOException {
+    private HttpServletRequest createHttpRequest( HttpServletRequest request ) {
         OwsGlobalConfigLoader loader = workspace.getNewWorkspace().getInitializable( OwsGlobalConfigLoader.class );
         if ( loader.getRequestLogger() != null ) {
-            response = createLoggingResponseWrapper( request, response );
+            return createLoggingResponseWrapper( request );
         }
-        return new HttpResponseBuffer( response );
+        return request;
     }
 
-    private HttpServletResponse createLoggingResponseWrapper( HttpServletRequest request, HttpServletResponse response )
-                            throws IOException, FileNotFoundException {
+    private HttpServletRequest createLoggingResponseWrapper( HttpServletRequest request ) {
         OwsGlobalConfigLoader loader = workspace.getNewWorkspace().getInitializable( OwsGlobalConfigLoader.class );
 
-        Boolean conf = mainConfig.getRequestLogging().isOnlySuccessful();
-        boolean onlySuccessful = conf != null && conf;
-
-        if ( "POST".equals( request.getMethod() ) && loader.getRequestLogger() != null ) {
-            String dir = mainConfig.getRequestLogging().getOutputDirectory();
-            File file;
-            if ( dir == null ) {
-                file = createTempFile( "request", ".body" );
-            } else {
-                File directory = new File( dir );
-                if ( !directory.exists() ) {
-                    directory.mkdirs();
-                }
-                file = createTempFile( "request", ".body", directory );
-            }
-            InputStream is = new LoggingInputStream( request.getInputStream(), new FileOutputStream( file ) );
-            response = new LoggingHttpResponseWrapper( request.getRequestURL().toString(), response, file,
-                                                       onlySuccessful, loader.getRequestLogger(), is );
-        } else {
-            response = new LoggingHttpResponseWrapper( response, request.getQueryString(), onlySuccessful,
-                                                       loader.getRequestLogger(), null );
+        Boolean onlySuccessfulConfig = mainConfig.getRequestLogging().isOnlySuccessful();
+        if ( onlySuccessfulConfig != null ) {
+            LOG.warn( "The option OnlySuccessful of RequestLogging is ignored. All requests are logged." );
         }
-        return response;
+        return new LoggingHttpRequestWrapper(  request, mainConfig.getRequestLogging().getOutputDirectory(), loader.getRequestLogger() );
     }
 
     private OWS determineOWSByPath( HttpServletRequest request )
@@ -577,8 +554,7 @@ public class OGCFrontController extends HttpServlet {
             }
             if ( ows == null ) {
                 String msg = "No service with identifier '" + serviceId + "' available.";
-                OWSException e = new OWSException( msg, OWSException.NO_APPLICABLE_CODE );
-                throw e;
+                throw new OWSException( msg, NOT_FOUND );
             }
         }
         return ows;
@@ -608,9 +584,7 @@ public class OGCFrontController extends HttpServlet {
             }
             if ( ows == null ) {
                 String msg = "No service with identifier '" + serviceId + "' available.";
-                OWSException e = new OWSException( msg, OWSException.NO_APPLICABLE_CODE );
-                // sendException( null, e, response, null );
-                throw e;
+                throw new OWSException( msg, NOT_FOUND );
             }
         }
         return ows;
@@ -713,7 +687,6 @@ public class OGCFrontController extends HttpServlet {
             Credentials cred = null;
             if ( credentialsProvider != null ) {
                 cred = credentialsProvider.doKVP( normalizedKVPParams, requestWrapper, response );
-                response.setCredentials( cred );
             }
             LOG.debug( "credentials: " + cred );
             bindContextToThread( requestWrapper, cred );
@@ -861,7 +834,6 @@ public class OGCFrontController extends HttpServlet {
             Credentials cred = null;
             if ( credentialsProvider != null ) {
                 cred = credentialsProvider.doXML( xmlStream, requestWrapper, response );
-                response.setCredentials( cred );
             }
             LOG.debug( "credentials: " + cred );
             bindContextToThread( requestWrapper, cred );
@@ -907,7 +879,7 @@ public class OGCFrontController extends HttpServlet {
             } else {
                 LOG.debug( "A security exception was thrown ( " + e.getLocalizedMessage()
                            + " but no credentials provider was configured, sending generic ogc exception." );
-                sendException( ows, new OWSException( e.getLocalizedMessage(), OWSException.NO_APPLICABLE_CODE ),
+                sendException( ows, new OWSException( e.getLocalizedMessage(), NO_APPLICABLE_CODE ),
                                response, null );
             }
         }
@@ -945,9 +917,9 @@ public class OGCFrontController extends HttpServlet {
         SOAPFactory factory = null;
         String ns = root.getNamespace().getNamespaceURI();
         if ( "http://schemas.xmlsoap.org/soap/envelope/".equals( ns ) ) {
-            factory = new SOAP11Factory();
+            factory = OMAbstractFactory.getSOAP11Factory();
         } else {
-            factory = new SOAP12Factory();
+            factory = OMAbstractFactory.getSOAP12Factory();
         }
 
         StAXSOAPModelBuilder soap = new StAXSOAPModelBuilder( root.getXMLStreamReaderWithoutCaching(), factory,
@@ -963,7 +935,6 @@ public class OGCFrontController extends HttpServlet {
             Credentials creds = null;
             if ( credentialsProvider != null ) {
                 creds = credentialsProvider.doSOAP( env, requestWrapper );
-                response.setCredentials( creds );
             }
             LOG.debug( "credentials: " + creds );
             bindContextToThread( requestWrapper, creds );
@@ -1086,6 +1057,7 @@ public class OGCFrontController extends HttpServlet {
             LOG.info( "" );
 
             initWorkspace();
+            DeegreeWorkspaceUpdater.INSTANCE.init( workspace );
 
         } catch ( NoClassDefFoundError e ) {
             LOG.error( "Initialization failed!" );
@@ -1137,6 +1109,9 @@ public class OGCFrontController extends HttpServlet {
         serviceConfiguration = workspace.getNewWorkspace().getResourceManager( OwsManager.class );
         OwsGlobalConfigLoader loader = workspace.getNewWorkspace().getInitializable( OwsGlobalConfigLoader.class );
         mainConfig = loader.getMainConfig();
+        if ( mainConfig != null && mainConfig.isAddDeegreeVersionToHeader() != null ) {
+            this.addDeegreeVersionToHeader = mainConfig.isAddDeegreeVersionToHeader();
+        }
         if ( mainConfig != null ) {
             initHardcodedUrls( mainConfig );
         }
@@ -1198,8 +1173,34 @@ public class OGCFrontController extends HttpServlet {
         destroyWorkspace();
         try {
             initWorkspace();
+            DeegreeWorkspaceUpdater.INSTANCE.notifyWorkspaceChange( workspace );
         } catch ( ResourceInitException e ) {
             throw new ServletException( e.getLocalizedMessage(), e.getCause() );
+        }
+    }
+
+    /**
+     * Checks for deleted, modified or added resource configs and updates the workspace resources
+     * accordingly.
+     *
+     * @throws IOException
+     * @throws URISyntaxException
+     * @throws ServletException
+     */
+    public void update()
+                            throws IOException, URISyntaxException, ServletException {
+        if ( DeegreeWorkspaceUpdater.INSTANCE.isWorkspaceChange(getActiveWorkspace()) ) {
+            // do complete reload
+            destroyWorkspace();
+            try {
+                initWorkspace();
+            } catch ( ResourceInitException e ) {
+                throw new ServletException( e.getLocalizedMessage(), e.getCause() );
+            }
+            DeegreeWorkspaceUpdater.INSTANCE.notifyWorkspaceChange( workspace );
+        } else {
+            // no complete reload - update only
+            DeegreeWorkspaceUpdater.INSTANCE.updateWorkspace( workspace );
         }
     }
 
@@ -1403,7 +1404,6 @@ public class OGCFrontController extends HttpServlet {
         Executor.getInstance().shutdown();
 
         LogFactory.releaseAll();
-        LogManager.shutdown();
 
         // image io
         Iterator<Class<?>> i = IIORegistry.getDefaultInstance().getCategories();
@@ -1551,7 +1551,6 @@ public class OGCFrontController extends HttpServlet {
                     LOG.error( "An error occurred while trying to send an exception: " + e2.getLocalizedMessage(), e );
                     throw new ServletException( e2 );
                 }
-                res.setExceptionSent();
             }
         }
 
@@ -1571,6 +1570,55 @@ public class OGCFrontController extends HttpServlet {
         if ( requestWatchdog != null ) {
             requestWatchdog.unwatchCurrentThread();
         }
+    }
+
+    private static String getHttpURL() {
+        RequestContext context = getContext();
+        String xForwardedHost = context.getXForwardedHost();
+        if ( xForwardedHost != null && xForwardedHost != "" ) {
+            String contextServiceUrl = context.getServiceUrl();
+            try {
+                URL serviceUrl = new URL( contextServiceUrl );
+                return buildUrlFromForwardedHeader( context, serviceUrl );
+            } catch ( MalformedURLException e ) {
+                LOG.warn( "Could not parse service URL as URL: " + contextServiceUrl );
+            }
+        }
+        return context.getServiceUrl();
+    }
+
+    private static String buildUrlFromForwardedHeader( RequestContext context, URL serviceUrl )
+                            throws MalformedURLException {
+        String xForwardedPort = context.getXForwardedPort();
+        String xForwardedHost = context.getXForwardedHost();
+        String xForwardedProto = context.getXForwardedProto();
+
+        String protocol = parseProtocol( xForwardedProto, serviceUrl );
+        String port = parsePort( xForwardedPort, serviceUrl );
+        String path = serviceUrl.getPath();
+
+        StringBuffer urlBuilder = new StringBuffer();
+        urlBuilder.append( protocol ).append( "://" ).append( xForwardedHost );
+        if ( port != null )
+            urlBuilder.append( ":" ).append( port );
+        if ( path != null && !"".equals( path ) )
+            urlBuilder.append( path );
+        return urlBuilder.toString();
+    }
+
+    private static String parseProtocol( String xForwardedProto, URL serviceUrl ) {
+        if ( xForwardedProto != null && !"".equals( xForwardedProto ) )
+            return xForwardedProto;
+        else
+            return serviceUrl.getProtocol();
+    }
+
+    private static String parsePort( String xForwardedPort, URL serviceUrl ) {
+        if ( xForwardedPort != null && !"".equals( xForwardedPort ) )
+            return xForwardedPort;
+        else if ( serviceUrl.getPort() > -1 )
+            return Integer.toString( serviceUrl.getPort() );
+        return null;
     }
 
 }

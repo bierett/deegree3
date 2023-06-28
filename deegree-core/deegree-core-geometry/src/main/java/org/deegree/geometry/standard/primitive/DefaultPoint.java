@@ -1,4 +1,3 @@
-//$HeadURL$
 /*----------------------------------------------------------------------------
  This file is part of deegree, http://deegree.org/
  Copyright (C) 2001-2009 by:
@@ -43,130 +42,132 @@ import org.deegree.geometry.primitive.Point;
 import org.deegree.geometry.standard.AbstractDefaultGeometry;
 import org.deegree.geometry.standard.DefaultEnvelope;
 
-import com.vividsolutions.jts.geom.Coordinate;
+import org.locationtech.jts.geom.Coordinate;
+
+import java.util.Arrays;
 
 /**
  * Default implementation of {@link Point}.
- * 
+ *
  * @author <a href="mailto:schneider@lat-lon.de">Markus Schneider</a>
- * @author last edited by: $Author$
- * 
- * @version $Revision$, $Date$
  */
 public class DefaultPoint extends AbstractDefaultGeometry implements Point {
 
-    private double[] coordinates;
+	private double[] coordinates;
 
-    /**
-     * Creates a new <code>DefaultPoint</code> instance from the given parameters.
-     * 
-     * @param id
-     *            identifier, may be null
-     * @param crs
-     *            coordinate reference system, may be null
-     * @param pm
-     *            precision model, may be null
-     * @param coordinates
-     *            coordinates of the point
-     */
-    public DefaultPoint( String id, ICRS crs, PrecisionModel pm, double[] coordinates ) {
-        super( id, crs, pm );
-        this.coordinates = coordinates;
-    }
+	/**
+	 * Creates a new <code>DefaultPoint</code> instance from the given parameters.
+	 * @param id identifier, may be null
+	 * @param crs coordinate reference system, may be null
+	 * @param pm precision model, may be null
+	 * @param coordinates coordinates of the point
+	 */
+	public DefaultPoint(String id, ICRS crs, PrecisionModel pm, double[] coordinates) {
+		super(id, crs, pm);
+		this.coordinates = coordinates;
+	}
 
-    @Override
-    public GeometryType getGeometryType() {
-        return GeometryType.PRIMITIVE_GEOMETRY;
-    }
+	@Override
+	public GeometryType getGeometryType() {
+		return GeometryType.PRIMITIVE_GEOMETRY;
+	}
 
-    @Override
-    public PrimitiveType getPrimitiveType() {
-        return PrimitiveType.Point;
-    }
+	@Override
+	public PrimitiveType getPrimitiveType() {
+		return PrimitiveType.Point;
+	}
 
-    @Override
-    public double get( int dimension ) {
-        if ( coordinates.length > dimension && dimension >= 0 ) {
-            return coordinates[dimension];
-        }
-        throw new IndexOutOfBoundsException();
-    }
+	@Override
+	public double get(int dimension) {
+		if (coordinates.length > dimension && dimension >= 0) {
+			return coordinates[dimension];
+		}
+		throw new IndexOutOfBoundsException();
+	}
 
-    @Override
-    public double[] getAsArray() {
-        return coordinates;
-    }
+	@Override
+	public double[] getAsArray() {
+		return coordinates;
+	}
 
-    @Override
-    public double get0() {
-        return coordinates[0];
-    }
+	@Override
+	public double get0() {
+		return coordinates[0];
+	}
 
-    @Override
-    public double get1() {
-        return coordinates[1];
-    }
+	@Override
+	public double get1() {
+		return coordinates[1];
+	}
 
-    @Override
-    public double get2() {
-        if ( coordinates.length > 2 ) {
-            return coordinates[2];
-        }
-        return Double.NaN;
-    }
+	@Override
+	public double get2() {
+		if (coordinates.length > 2) {
+			return coordinates[2];
+		}
+		return Double.NaN;
+	}
 
-    @Override
-    public boolean equals( Geometry geometry ) {
-        if ( !( geometry instanceof Point ) ) {
-            return false;
-        }
-        double[] coordinates = ( (Point) geometry ).getAsArray();
-        if ( coordinates.length != this.coordinates.length ) {
-            return false;
-        }
-        for ( int i = 0; i < coordinates.length; i++ ) {
-            if ( !( coordinates[i] == this.coordinates[i] ) ) {
-                return false;
-            }
-        }
-        return true;
-    }
+	@Override
+	public Point copy() {
+		return new DefaultPoint(id, crs, pm, Arrays.copyOf(coordinates, coordinates.length));
+	}
 
-    @Override
-    public int getCoordinateDimension() {
-        return coordinates.length;
-    }
+	@Override
+	public boolean equals(Geometry geometry) {
+		if (!(geometry instanceof Point)) {
+			return false;
+		}
+		double[] coordinates = ((Point) geometry).getAsArray();
+		if (coordinates.length != this.coordinates.length) {
+			return false;
+		}
+		for (int i = 0; i < coordinates.length; i++) {
+			if (!(coordinates[i] == this.coordinates[i])) {
+				return false;
+			}
+		}
+		return true;
+	}
 
-    @Override
-    public Envelope getEnvelope() {
-        return new DefaultEnvelope( null, crs, pm, this, this );
-    }
+	@Override
+	public int getCoordinateDimension() {
+		return coordinates.length;
+	}
 
-    @Override
-    public boolean isSFSCompliant() {
-        return true;
-    }
+	@Override
+	public Envelope getEnvelope() {
+		return new DefaultEnvelope(null, crs, pm, this, this);
+	}
 
-    @Override
-    public String toString() {
-        String s = "(" + coordinates[0];
-        for ( int i = 1; i < coordinates.length; i++ ) {
-            s += "," + coordinates[i];
-        }
-        s += ")";
-        return s;
-    }
+	@Override
+	public boolean isSFSCompliant() {
+		return true;
+	}
 
-    @Override
-    protected com.vividsolutions.jts.geom.Point buildJTSGeometry() {
-        Coordinate coords = null;
-        if ( coordinates.length == 2 ) {
-            coords = new Coordinate( coordinates[0], coordinates[1] );
-        } else if ( coordinates.length == 3 ) {
-            coords = new Coordinate( coordinates[0], coordinates[1], coordinates[2] );
-        } else {
-            throw new UnsupportedOperationException();
-        }
-        return jtsFactory.createPoint( coords );
-    }
+	@Override
+	public String toString() {
+		String s = "(" + coordinates[0];
+		for (int i = 1; i < coordinates.length; i++) {
+			s += "," + coordinates[i];
+		}
+		s += ")";
+		return s;
+	}
+
+	@Override
+	protected org.locationtech.jts.geom.Point buildJTSGeometry() {
+		Coordinate coords = null;
+		if (coordinates.length == 2) {
+			coords = new Coordinate(coordinates[0], coordinates[1]);
+		}
+		else if (coordinates.length == 3) {
+			coords = new Coordinate(coordinates[0], coordinates[1], coordinates[2]);
+		}
+		else {
+			throw new UnsupportedOperationException();
+		}
+		return jtsFactory.createPoint(coords);
+	}
+
 }

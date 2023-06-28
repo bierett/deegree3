@@ -1,4 +1,3 @@
-//$HeadURL: svn+ssh://aschmitz@wald.intevation.org/deegree/base/trunk/resources/eclipse/files_template.xml $
 /*----------------------------------------------------------------------------
  This file is part of deegree, http://deegree.org/
  Copyright (C) 2001-2011 by:
@@ -35,61 +34,131 @@
  ----------------------------------------------------------------------------*/
 package org.deegree.geometry.metadata;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.deegree.cs.coordinatesystems.ICRS;
 import org.deegree.geometry.Envelope;
+import org.deegree.geometry.SimpleGeometryFactory;
+import org.deegree.geometry.primitive.Point;
 
 /**
- * 
  * @author <a href="mailto:schmitz@lat-lon.de">Andreas Schmitz</a>
- * @author last edited by: $Author: stranger $
- * 
- * @version $Revision: $, $Date: $
  */
 public class SpatialMetadata {
 
-    private Envelope envelope;
+	private static final SimpleGeometryFactory GEOM_FACTORY = new SimpleGeometryFactory();
 
-    private List<ICRS> coordinateSystems;
+	private Envelope envelope;
 
-    /**
-     * @param envelope
-     * @param coordinateSystems
-     */
-    public SpatialMetadata( Envelope envelope, List<ICRS> coordinateSystems ) {
-        this.envelope = envelope;
-        this.coordinateSystems = coordinateSystems;
-    }
+	private List<ICRS> coordinateSystems;
 
-    /**
-     * @return the envelope
-     */
-    public Envelope getEnvelope() {
-        return envelope;
-    }
+	/**
+	 * Instantiates an empty SpatialMetadata instance.
+	 */
+	public SpatialMetadata() {
+		this(null, Collections.<ICRS>emptyList());
+	}
 
-    /**
-     * @param envelope
-     *            the envelope to set
-     */
-    public void setEnvelope( Envelope envelope ) {
-        this.envelope = envelope;
-    }
+	/**
+	 * Instantiates an SpatialMetadata instance with envelope and coordinate systems.
+	 * @param envelope may be <code>null</code>
+	 * @param coordinateSystems may be empty but never <code>null</code>
+	 */
+	public SpatialMetadata(Envelope envelope, List<ICRS> coordinateSystems) {
+		this.envelope = envelope;
+		this.coordinateSystems = coordinateSystems;
+	}
 
-    /**
-     * @return the coordinateSystems, never null
-     */
-    public List<ICRS> getCoordinateSystems() {
-        return coordinateSystems;
-    }
+	/**
+	 * Instantiates an SpatialMetadata from another SpatialMetadata instance.
+	 * @param spatialMetadata may be <code>null</code>
+	 **/
+	public SpatialMetadata(SpatialMetadata spatialMetadata) {
+		if (spatialMetadata != null) {
+			this.envelope = copyEnvelope(spatialMetadata.envelope);
+			this.coordinateSystems = new ArrayList<ICRS>();
+			if (spatialMetadata.coordinateSystems != null)
+				this.coordinateSystems.addAll(spatialMetadata.coordinateSystems);
+		}
+		else {
+			this.envelope = null;
+			this.coordinateSystems = Collections.emptyList();
+		}
+	}
 
-    /**
-     * @param coordinateSystems
-     *            the coordinateSystems to set, may not be null
-     */
-    public void setCoordinateSystems( List<ICRS> coordinateSystems ) {
-        this.coordinateSystems = coordinateSystems;
-    }
+	/**
+	 * @return the envelope may be <code>null</code>
+	 */
+	public Envelope getEnvelope() {
+		return envelope;
+	}
+
+	/**
+	 * @param envelope the envelope to set, may be <code>null</code>
+	 */
+	public void setEnvelope(Envelope envelope) {
+		this.envelope = envelope;
+	}
+
+	/**
+	 * @return the coordinateSystems, never <code>null</code>
+	 */
+	public List<ICRS> getCoordinateSystems() {
+		return coordinateSystems;
+	}
+
+	/**
+	 * @param coordinateSystems the coordinateSystems to set, never <code>null</code>
+	 */
+	public void setCoordinateSystems(List<ICRS> coordinateSystems) {
+		this.coordinateSystems = coordinateSystems;
+	}
+
+	/**
+	 * Merge the passed SpatialMetadata into this SpatialMetadata and returns the merged
+	 * SpatialMetadata, this and the passed are not changed!
+	 * @param spatialMetadataToMerge SpatialMetadata to merge, never <code>null</code>
+	 */
+	public SpatialMetadata merge(SpatialMetadata spatialMetadataToMerge) {
+		if (spatialMetadataToMerge == null)
+			return new SpatialMetadata(this);
+
+		List<ICRS> newCoordinateSystems = new ArrayList<ICRS>();
+		if (this.coordinateSystems != null) {
+			newCoordinateSystems.addAll(this.coordinateSystems);
+		}
+		if (spatialMetadataToMerge.getCoordinateSystems() != null) {
+			for (ICRS crsToMerge : spatialMetadataToMerge.getCoordinateSystems()) {
+				if (!newCoordinateSystems.contains(crsToMerge)) {
+					newCoordinateSystems.add(crsToMerge);
+				}
+			}
+		}
+		Envelope newEnvelope = copyEnvelope(this.envelope);
+		if (spatialMetadataToMerge.getEnvelope() != null) {
+			if (newEnvelope == null)
+				newEnvelope = copyEnvelope(spatialMetadataToMerge.getEnvelope());
+			else
+				newEnvelope = newEnvelope.merge(spatialMetadataToMerge.getEnvelope());
+		}
+		return new SpatialMetadata(newEnvelope, newCoordinateSystems);
+	}
+
+	@Override
+	public String toString() {
+		return "SpatialMetadata [envelope=" + envelope + ", coordinateSystems=" + coordinateSystems + "]";
+	}
+
+	private Envelope copyEnvelope(Envelope envelopeToCopy) {
+		if (envelopeToCopy != null) {
+			Point min = envelopeToCopy.getMin();
+			Point max = envelopeToCopy.getMax();
+			ICRS crs = envelopeToCopy.getCoordinateSystem();
+			return GEOM_FACTORY.createEnvelope(min.get0(), min.get1(), max.get0(), max.get1(), crs);
+		}
+		return null;
+	}
 
 }

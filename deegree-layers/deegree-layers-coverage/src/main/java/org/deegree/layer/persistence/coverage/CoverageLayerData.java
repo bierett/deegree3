@@ -1,4 +1,3 @@
-//$HeadURL: svn+ssh://aschmitz@wald.intevation.org/deegree/base/trunk/resources/eclipse/files_template.xml $
 /*----------------------------------------------------------------------------
  This file is part of deegree, http://deegree.org/
  Copyright (C) 2001-2011 by:
@@ -48,10 +47,12 @@ import org.deegree.coverage.raster.AbstractRaster;
 import org.deegree.coverage.raster.geom.Grid;
 import org.deegree.coverage.raster.interpolation.InterpolationType;
 import org.deegree.coverage.raster.utils.CoverageTransform;
+import org.deegree.cs.coordinatesystems.ICRS;
 import org.deegree.feature.FeatureCollection;
 import org.deegree.feature.types.FeatureType;
 import org.deegree.geometry.Envelope;
 import org.deegree.geometry.Geometry;
+import org.deegree.geometry.GeometryTransformer;
 import org.deegree.layer.LayerData;
 import org.deegree.rendering.r2d.RasterRenderer;
 import org.deegree.rendering.r2d.context.RenderContext;
@@ -61,77 +62,123 @@ import org.deegree.style.styling.Styling;
 import org.slf4j.Logger;
 
 /**
- * 
  * @author <a href="mailto:schmitz@lat-lon.de">Andreas Schmitz</a>
- * @author last edited by: $Author: stranger $
- * 
- * @version $Revision: $, $Date: $
  */
 public class CoverageLayerData implements LayerData {
 
-    private static final Logger LOG = getLogger( CoverageLayerData.class );
+	private static final Logger LOG = getLogger(CoverageLayerData.class);
 
-    private AbstractRaster raster;
+	private AbstractRaster raster;
 
-    private final Envelope bbox;
+	private final Envelope bbox;
 
-    private final int width;
+	private final int width;
 
-    private final int height;
+	private final int height;
 
-    private final InterpolationType interpol;
+	private final InterpolationType interpol;
 
-    private final RangeSet filter;
+	private final RangeSet filter;
 
-    private final Style style;
+	private final Style style;
 
-    private final FeatureType featureType;
+	private final FeatureType featureType;
 
-    public CoverageLayerData( AbstractRaster raster, Envelope bbox, int width, int height, InterpolationType interpol,
-                              RangeSet filter, Style style, FeatureType featureType ) {
-        this.raster = raster;
-        this.bbox = bbox;
-        this.width = width;
-        this.height = height;
-        this.interpol = interpol;
-        this.filter = filter;
-        this.style = style;
-        this.featureType = featureType;
-    }
+	private CoverageDimensionHandler dimensionHandler;
 
-    @Override
-    public void render( RenderContext context ) {
-        try {
-            RasterRenderer renderer = context.getRasterRenderer();
+	private final CoverageFeatureInfoMode featureInfoMode;
 
-            raster = CoverageTransform.transform( this.raster, bbox, Grid.fromSize( width, height, MAX_VALUE, bbox ),
-                                                  interpol.toString() );
+	private final int infoPosX;
 
-            if ( filter != null ) {
-                RangeSet cbr = createBandRangeSetFromRaster( null, null, raster );
-                raster = new RasterFilter( raster ).apply( cbr, filter );
-            }
+	private final int infoPosY;
 
-            LinkedList<Triple<Styling, LinkedList<Geometry>, String>> list = style == null || style.isDefault() ? null
-                                                                                                               : style.evaluate( null,
-                                                                                                                                 null );
-            if ( list != null && list.size() > 0 ) {
-                for ( Triple<Styling, LinkedList<Geometry>, String> t : list ) {
-                    renderer.render( (RasterStyling) t.first, raster );
-                }
-            } else {
-                renderer.render( null, raster );
-            }
-        } catch ( Throwable e ) {
-            LOG.trace( "Stack trace:", e );
-            LOG.error( "Unable to render raster: {}", e.getLocalizedMessage() );
-        }
-    }
+	private final Integer featureInfoDecimalPlaces;
 
-    @Override
-    public FeatureCollection info() {
-        CoverageFeatureInfoHandler handler = new CoverageFeatureInfoHandler( raster, bbox, featureType, interpol );
-        return handler.handleFeatureInfo();
-    }
+	public CoverageLayerData(AbstractRaster raster, Envelope bbox, int width, int height, InterpolationType interpol,
+			RangeSet filter, Style style, FeatureType featureType, CoverageFeatureInfoMode featureInfoMode) {
+		this(raster, bbox, width, height, interpol, filter, style, featureType, null, featureInfoMode, -1, -1, null);
+	}
+
+	public CoverageLayerData(AbstractRaster raster, Envelope bbox, int width, int height, InterpolationType interpol,
+			RangeSet filter, Style style, FeatureType featureType, CoverageDimensionHandler dimensionHandler,
+			CoverageFeatureInfoMode featureInfoMode, int infoPosX, int infoPosY, Integer featureInfoDecimalPlaces) {
+		this.raster = raster;
+		this.bbox = bbox;
+		this.width = width;
+		this.height = height;
+		this.interpol = interpol;
+		this.filter = filter;
+		this.style = style;
+		this.featureType = featureType;
+		this.dimensionHandler = dimensionHandler;
+		this.featureInfoMode = featureInfoMode;
+		this.infoPosX = infoPosX;
+		this.infoPosY = infoPosY;
+		this.featureInfoDecimalPlaces = featureInfoDecimalPlaces;
+	}
+
+	@Override
+	public void render(RenderContext context) {
+		try {
+			// prevent transformation if not intersects
+			ICRS bboxCRS = bbox.getCoordinateSystem();
+			ICRS rasterCRS = raster.getCoordinateSystem();
+			Envelope rasterBBox = raster.getEnvelope();
+			Envelope workEnv = rasterBBox;
+
+			if (rasterBBox == null || rasterCRS == null || bboxCRS == null) {
+				// do not render, if no data is available for intersection check
+				return;
+			}
+
+			if (!rasterCRS.equals(bboxCRS)) {
+				GeometryTransformer dstTransf = new GeometryTransformer(bboxCRS);
+				workEnv = dstTransf.transform(rasterBBox, rasterCRS);
+			}
+
+			if (!workEnv.intersects(bbox)) {
+				// intersection is empty or no overlap
+				return;
+			}
+
+			RasterRenderer renderer = context.getRasterRenderer();
+
+			AbstractRaster result;
+			result = CoverageTransform.transform(raster, bbox, Grid.fromSize(width, height, MAX_VALUE, bbox),
+					interpol.toString());
+
+			if (filter != null) {
+				RangeSet cbr = createBandRangeSetFromRaster(null, null, result);
+				result = new RasterFilter(result).apply(cbr, filter);
+			}
+
+			LinkedList<Triple<Styling, LinkedList<Geometry>, String>> list = style == null || style.isDefault() ? null
+					: style.evaluate(null, null);
+			if (list != null && list.size() > 0) {
+				for (Triple<Styling, LinkedList<Geometry>, String> t : list) {
+					renderer.render((RasterStyling) t.first, result);
+				}
+			}
+			else {
+				renderer.render(null, result);
+			}
+		}
+		catch (Throwable e) {
+			LOG.trace("Stack trace:", e);
+			LOG.error("Unable to render raster: {}", e.getLocalizedMessage());
+		}
+	}
+
+	@Override
+	public FeatureCollection info() {
+		CoverageFeatureInfoHandler handler = new CoverageFeatureInfoHandler(raster, bbox, featureType, interpol,
+				dimensionHandler, featureInfoDecimalPlaces);
+		if (featureInfoMode == CoverageFeatureInfoMode.POINT) {
+			return handler.handleFeatureInfoPoint(infoPosX, infoPosY, width, height);
+		}
+		else {
+			return handler.handleFeatureInfo();
+		}
+	}
 
 }
